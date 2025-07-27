@@ -1,4 +1,4 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/8MxTER4w)
+[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/k_hkOCd1)
 Ambiente de desenvolvimento para BCC328
 =======================================
 
@@ -59,4 +59,31 @@ Observação
 
 Caso o comando `apt-get` retorne erro, tente executar usando `sudo`.
 
+Gerando o Lexer com Alex:
+```
+alex src/L/L1/Frontend/Lexer.x -o src/L/L1/Frontend/Lexer.hs
+```
 
+Gerando o Parser com happy:
+```
+happy src/L/L1/Frontend/Parser.y -o src/L/L1/Frontend/LALRParser.hs
+```
+
+
+Executando os exercícios L1:
+
+Acesse o diretório raiz (bcc328) e digite:
+```
+cabal run l1 -- --lexer-only test.l1
+cabal run l1 -- --recursive test.l1
+cabal run l1 -- --lalr test.l1
+```
+
+Executando os exercícios L2:
+
+Acesse o diretório raiz (bcc328) e digite:
+```
+cabal run l2 -- --lexer-only test.l2
+cabal run l2 -- --parse-only test.l2
+cabal run l2 -- --interpret test.l2
+```

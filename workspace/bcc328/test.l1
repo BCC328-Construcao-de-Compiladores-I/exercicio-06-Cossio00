@@ -1,0 +1,3 @@
+x := 0;
+read("Digite o valor de x: ", x);
+print("O valor de x ao quadrado é: " + (x * x));

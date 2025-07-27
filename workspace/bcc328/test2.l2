@@ -1,0 +1,12 @@
+def screenPresentation := "Arquivo de teste modificado" in
+  print(screenPresentation)
+end
+def x := 1 in
+  a := x + 1;
+  print(a);
+  def x := 5 in
+    a := x + 1;
+    print("Variável a: " +a);
+  end
+  print("Variável a: " +a);
+end

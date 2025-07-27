@@ -1,0 +1,9 @@
+def x := 1 in
+  a := x + 1;
+  print(a);
+  def x := 5 in
+    a := x + 1;
+    print(a);
+  end
+  print(a);
+end
