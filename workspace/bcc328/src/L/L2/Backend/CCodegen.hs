@@ -59,18 +59,19 @@ compile (L2 stmts) = do
 compileStmt :: S2 -> CCompiler String
 compileStmt (LAssign v e) = do
   env <- get
-  case Map.lookup v env of
-    Just _ -> return ()
-    Nothing -> put $ Map.insert v (VInt 0) env
   expr <- compileExpr e
-  return $ printf "  int %s = %s;\n" (varName v) expr
+  case Map.lookup v env of
+    Just _ -> return $ printf "  %s = %s;\n" (varName v) expr
+    Nothing -> do
+      put $ Map.insert v (VInt 0) env
+      return $ printf "  int %s = %s;\n" (varName v) expr
 compileStmt (LRead s v) = do
   env <- get
   case Map.lookup v env of
     Just _ -> return ()
     Nothing -> put $ Map.insert v (VInt 0) env
   let prompt = escapeString s
-  return $ printf "  printf(\"%s\"); int %s; scanf(\"%%d\", &%s);\n" prompt (varName v) (varName v)
+  return $ printf "  printf(\"%s\"); scanf(\"%%d\", &%s);\n" prompt (varName v)
 compileStmt (LPrint e) = do
   expr <- compileExpr e
   return $ case exprType e of
