@@ -1,0 +1,4 @@
+def message := "Teste" in
+  print(message);
+  print(x); -- Erro: variável 'x' não definida
+end

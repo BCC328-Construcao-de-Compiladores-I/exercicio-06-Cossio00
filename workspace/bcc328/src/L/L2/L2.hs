@@ -6,6 +6,7 @@ import L.L2.Backend.V1Codegen
 import L.L2.Frontend.Lexer (Token(..), TokenType(..), AlexPosn(..), lexer)
 import L.L2.Frontend.LALRParser
 import L.L2.Frontend.Syntax
+import L.L2.Frontend.TypeCheck
 import L.L2.Frontend.AST (toTree)
 import Utils.Pretty
 import Utils.Value
@@ -16,7 +17,7 @@ import Data.Tree (drawTree)
 import System.Environment
 import System.FilePath
 import Control.Exception (try, SomeException, evaluate)
-import Control.Monad (mapM_)
+import Control.Monad (mapM_, when)
 import Control.Monad.Except
 import Control.Monad.State
 import System.IO
@@ -85,8 +86,13 @@ interpret file = do
   case result of
     Left err -> putStrLn $ "Erro de parsing: " ++ show err
     Right ast -> do
-      output <- interp ast
-      mapM_ putStrLn output
+      let ((_, warns), _) = runTcM initTcEnv (mapM_ checkStmt (unL2 ast))
+      when (not $ null warns) $ putStrLn $ "Warnings: " ++ unlines warns
+      case typeCheck ast of
+        Left err -> putStrLn $ "Type check error: " ++ err
+        Right p -> do
+          output <- interp p
+          mapM_ putStrLn output
 
 cCompiler :: FilePath -> IO ()
 cCompiler file = do
@@ -96,17 +102,22 @@ cCompiler file = do
   case result of
     Left err -> putStrLn $ "Erro de parsing: " ++ show err
     Right ast -> do
-      result <- runStateT (runExceptT (compile ast)) Map.empty
-      case fst result of
-        Left err -> putStrLn $ "Erro semântico: " ++ err
-        Right code -> do
-          let cFile = replaceExtension file "c"
-          let exeFile = dropExtension file ++ ".out"
-          writeFile cFile code
-          putStrLn $ "Generated C code written to: " ++ cFile
-          callProcess "gcc" [cFile, "-o", exeFile]
-          putStrLn $ "Compiled executable: " ++ exeFile
-          callProcess exeFile []
+      let ((_, warns), _) = runTcM initTcEnv (mapM_ checkStmt (unL2 ast))
+      when (not $ null warns) $ putStrLn $ "Warnings: " ++ unlines warns
+      case typeCheck ast of
+        Left err -> putStrLn $ "Type check error: " ++ err
+        Right p -> do
+          result <- runStateT (runExceptT (compile p)) Map.empty
+          case fst result of
+            Left err -> putStrLn $ "Erro semântico: " ++ err
+            Right code -> do
+              let cFile = replaceExtension file "c"
+              let exeFile = dropExtension file ++ ".out"
+              writeFile cFile code
+              putStrLn $ "Generated C code written to: " ++ cFile
+              callProcess "gcc" [cFile, "-o", exeFile]
+              putStrLn $ "Compiled executable: " ++ exeFile
+              callProcess exeFile []
 
 v1Compiler :: FilePath -> IO ()
 v1Compiler file = do
@@ -116,10 +127,14 @@ v1Compiler file = do
   case result of
     Left err -> putStrLn $ "Erro de parsing: " ++ show err
     Right ast -> do
-      let code = v1Codegen ast
-      let v1File = replaceExtension file "v1"
-      writeFile v1File (unlines $ map show code)
-      putStrLn $ "Generated V1 code written to: " ++ v1File
+      let ((_, warns), _) = runTcM initTcEnv (mapM_ checkStmt (unL2 ast))
+      when (not $ null warns) $ putStrLn $ "Warnings: " ++ unlines warns
+      case typeCheck ast of
+        Left err -> putStrLn $ "Type check error: " ++ err
+        Right p -> do
+          let v1File = replaceExtension file "v1"
+          writeFile v1File (unlines $ map show $ v1Codegen p)
+          putStrLn $ "Generated V1 code written to: " ++ v1File
 
 helpMessage :: IO ()
 helpMessage = putStrLn $ unlines
@@ -151,3 +166,6 @@ parseOptions args =
     ("--v1" : arg : _) -> [VM arg]
     ("--c" : arg : _) -> [C arg]
     _ -> [Help]
+
+unL2 :: L2 -> [S2]
+unL2 (L2 stmts) = stmts
