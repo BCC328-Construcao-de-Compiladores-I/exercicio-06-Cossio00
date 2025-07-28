@@ -109,7 +109,17 @@ cCompiler file = do
           callProcess exeFile []
 
 v1Compiler :: FilePath -> IO ()
-v1Compiler file = error "Not implemented!"
+v1Compiler file = do
+  content <- readFile file
+  let tokens = lexer content
+  result <- try (evaluate $ l2Parser tokens) :: IO (Either SomeException L2)
+  case result of
+    Left err -> putStrLn $ "Erro de parsing: " ++ show err
+    Right ast -> do
+      let code = v1Codegen ast
+      let v1File = replaceExtension file "v1"
+      writeFile v1File (unlines $ map show code)
+      putStrLn $ "Generated V1 code written to: " ++ v1File
 
 helpMessage :: IO ()
 helpMessage = putStrLn $ unlines

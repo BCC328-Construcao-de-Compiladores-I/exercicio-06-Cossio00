@@ -110,6 +110,7 @@ bench.html
 # ignore the downloaded binary files
 scripts/release/binary-downloads/
 
-#ignore .c and .out files
+#ignore .c, .out and .v1 files and files
 *.c 
 *.out
+*.v1
