@@ -6,7 +6,7 @@ def x := 1 in
   print(a);
   def x := 5 in
     a := x + 1;
-    print("Variável a: " +a);
+    print("Variavel a: " +a);
   end
-  print("Variável a: " +a);
+  print("Variavel a: " +a);
 end

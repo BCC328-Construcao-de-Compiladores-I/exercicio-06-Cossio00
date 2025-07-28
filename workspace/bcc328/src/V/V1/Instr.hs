@@ -16,6 +16,7 @@ data Instr
   | Load Var
   | Store Var
   | Halt
+  | Concat
   deriving (Eq, Ord, Show)
 
 type Code = [Instr]
@@ -45,3 +46,4 @@ instance Pretty Instr where
                        , text ";"
                        ]
   ppr Halt = text "halt;"
+  ppr Concat = text "concat;"

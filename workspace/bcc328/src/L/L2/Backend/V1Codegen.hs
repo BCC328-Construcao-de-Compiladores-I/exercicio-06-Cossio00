@@ -29,10 +29,10 @@ compileStmt (LAssign v e) = do
 compileStmt (LRead s v) = do
   env <- get
   put $ Map.insert v (VInt 0) env
-  return [] -- Placeholder: [Push (VStr s), Out, In, Store v]
+  return $ [Push (VStr s), Print, Input, Store v]
 compileStmt (LPrint e) = do
   exprCode <- compileExpr e
-  return $ exprCode -- Placeholder: exprCode ++ [Out]
+  return $ exprCode ++ [Print]
 compileStmt (Def v e stmts) = do
   env <- get
   put $ Map.insert v (exprType e) env
@@ -56,7 +56,9 @@ compileExpr (LAdd e1 e2) = do
   e2Code <- compileExpr e2
   case (t1, t2) of
     (VInt _, VInt _) -> return $ e1Code ++ e2Code ++ [Add]
-    _ -> return [] -- Placeholder: e1Code ++ e2Code ++ [Concat]
+    (VStr _, VInt _) -> return $ e1Code ++ e2Code ++ [Concat]
+    (VInt _, VStr _) -> return $ e1Code ++ e2Code ++ [Concat]
+    (VStr _, VStr _) -> return $ e1Code ++ e2Code ++ [Concat]
 compileExpr (LMinus e1 e2) = do
   t1 <- exprTypeM e1
   t2 <- exprTypeM e2

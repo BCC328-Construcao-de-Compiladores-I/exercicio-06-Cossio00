@@ -1,18 +1,18 @@
 def message := "Calculadora" in
   print(message);
-  read("Digite um número: ", n1);
-  read("Digite outro número: ", n2);
-  print("Você digitou: " + n1 + " e " + n2);
+  read("Digite um numero: ", n1);
+  read("Digite outro numero: ", n2);
+  print("Voce digitou: " + n1 + " e " + n2);
   def sum := n1 + n2 in 
-    print("A soma desses números é: " + sum);
+    print("A soma desses numeros e: " + sum);
   end
   def dif := n1 - n2 in
-    print("A diferença entre esses números é: " + dif); 
+    print("A diferenca entre esses numeros e: " + dif); 
   end
   def mult := n1 * n2 in 
-    print("O produto desses números é: " + mult);
+    print("O produto desses numeros e: " + mult);
   end
   def div := n1 / n2 in 
-    print("A divisão desses números é: " + div);
+    print("A divisao desses numeros e: " + div);
   end
 end
