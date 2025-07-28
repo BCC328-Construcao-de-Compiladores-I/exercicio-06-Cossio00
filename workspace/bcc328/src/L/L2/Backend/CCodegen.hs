@@ -68,11 +68,12 @@ compileStmt (LAssign v e) = do
       return $ printf "  %s %s = %s;\n" (typeToC varType) (varName v) expr
 compileStmt (LRead s v) = do
   env <- get
-  case Map.lookup v env of
-    Just _ -> return ()
-    Nothing -> put $ Map.insert v (VInt 0) env
   let prompt = escapeString s
-  return $ printf "  printf(\"%s\"); scanf(\"%%d\", &%s);\n" prompt (varName v)
+  case Map.lookup v env of
+    Just _ -> return $ printf "  printf(\"%s\"); scanf(\"%%d\", &%s);\n" prompt (varName v)
+    Nothing -> do
+      put $ Map.insert v (VInt 0) env
+      return $ printf "  int %s;\n  printf(\"%s\"); scanf(\"%%d\", &%s);\n" (varName v) prompt (varName v)
 compileStmt (LPrint e) = do
   expr <- compileExpr e
   varType <- exprType e
@@ -106,7 +107,30 @@ compileExpr (LAdd e1 e2) = do
     (VStr _, VInt _) -> return $ printf "concat(%s, itoa(%s, malloc(32), 10))" e1' e2'
     (VInt _, VStr _) -> return $ printf "concat(itoa(%s, malloc(32), 10), %s)" e1' e2'
     (VStr _, VStr _) -> return $ printf "concat(%s, %s)" e1' e2'
-compileExpr _ = throwError "Unsupported expression"
+compileExpr (LMinus e1 e2) = do
+  t1 <- exprType e1
+  t2 <- exprType e2
+  e1' <- compileExpr e1
+  e2' <- compileExpr e2
+  case (t1, t2) of
+    (VInt _, VInt _) -> return $ printf "(%s - %s)" e1' e2'
+    _ -> throwError "Minus operation only supported for integers"
+compileExpr (LMul e1 e2) = do
+  t1 <- exprType e1
+  t2 <- exprType e2
+  e1' <- compileExpr e1
+  e2' <- compileExpr e2
+  case (t1, t2) of
+    (VInt _, VInt _) -> return $ printf "(%s * %s)" e1' e2'
+    _ -> throwError "Multiplication operation only supported for integers"
+compileExpr (LDiv e1 e2) = do
+  t1 <- exprType e1
+  t2 <- exprType e2
+  e1' <- compileExpr e1
+  e2' <- compileExpr e2
+  case (t1, t2) of
+    (VInt _, VInt _) -> return $ printf "(%s / %s)" e1' e2'
+    _ -> throwError "Division operation only supported for integers"
 
 typeToC :: Value -> String
 typeToC (VInt _) = "int"
@@ -134,7 +158,24 @@ exprType (LAdd e1 e2) = do
     (VInt _, VInt _) -> VInt 0
     (VStr _, _) -> VStr ""
     (_, VStr _) -> VStr ""
-exprType _ = return $ VInt 0
+exprType (LMinus e1 e2) = do
+  t1 <- exprType e1
+  t2 <- exprType e2
+  return $ case (t1, t2) of
+    (VInt _, VInt _) -> VInt 0
+    _ -> VInt 0
+exprType (LMul e1 e2) = do
+  t1 <- exprType e1
+  t2 <- exprType e2
+  return $ case (t1, t2) of
+    (VInt _, VInt _) -> VInt 0
+    _ -> VInt 0 
+exprType (LDiv e1 e2) = do
+  t1 <- exprType e1
+  t2 <- exprType e2
+  return $ case (t1, t2) of
+    (VInt _, VInt _) -> VInt 0
+    _ -> VInt 0 
 
 concatMapM :: (a -> CCompiler String) -> [a] -> CCompiler String
 concatMapM f xs = concat <$> mapM f xs
