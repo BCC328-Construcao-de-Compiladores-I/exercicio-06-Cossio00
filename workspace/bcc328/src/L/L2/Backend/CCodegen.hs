@@ -5,7 +5,8 @@ module L.L2.Backend.CCodegen (
   compileExpr,
   escapeString,
   exprType,
-  concatMapM
+  concatMapM,
+  varName
 ) where
 
 import L.L2.Frontend.LALRParser (l2Parser)
@@ -23,8 +24,10 @@ import System.FilePath
 import Control.Exception (try, SomeException, evaluate)
 import Text.Printf
 
-
 type CCompiler a = ExceptT String (StateT (Map Var Value) IO) a
+
+varName :: Var -> String
+varName (Var s) = s
 
 compile :: L2 -> CCompiler String
 compile (L2 stmts) = do
@@ -60,14 +63,14 @@ compileStmt (LAssign v e) = do
     Just _ -> return ()
     Nothing -> put $ Map.insert v (VInt 0) env
   expr <- compileExpr e
-  return $ printf "  int %s = %s;\n" (show v) expr
+  return $ printf "  int %s = %s;\n" (varName v) expr
 compileStmt (LRead s v) = do
   env <- get
   case Map.lookup v env of
     Just _ -> return ()
     Nothing -> put $ Map.insert v (VInt 0) env
   let prompt = escapeString s
-  return $ printf "  printf(\"%s\"); int %s; scanf(\"%%d\", &%s);\n" prompt (show v) (show v)
+  return $ printf "  printf(\"%s\"); int %s; scanf(\"%%d\", &%s);\n" prompt (varName v) (varName v)
 compileStmt (LPrint e) = do
   expr <- compileExpr e
   return $ case exprType e of
@@ -79,7 +82,7 @@ compileStmt (Def v e stmts) = do
   expr <- compileExpr e
   body <- concatMapM compileStmt stmts
   put env
-  return $ printf "  {\n    int %s = %s;\n%s  }\n" (show v) expr body
+  return $ printf "  {\n    int %s = %s;\n%s  }\n" (varName v) expr body
 
 compileExpr :: E2 -> CCompiler String
 compileExpr (LVal (VInt n)) = return $ show n
@@ -87,8 +90,8 @@ compileExpr (LVal (VStr s)) = return $ printf "\"%s\"" (escapeString s)
 compileExpr (LVar v) = do
   env <- get
   case Map.lookup v env of
-    Just _ -> return $ show v
-    Nothing -> throwError $ "Undefined variable: " ++ show v
+    Just _ -> return $ varName v
+    Nothing -> throwError $ "Undefined variable: " ++ varName v
 compileExpr (LAdd e1 e2) = do
   let t1 = exprType e1
   let t2 = exprType e2
@@ -99,18 +102,7 @@ compileExpr (LAdd e1 e2) = do
     (VStr _, VInt _) -> return $ printf "concat(%s, itoa(%s, malloc(32), 10))" e1' e2'
     (VInt _, VStr _) -> return $ printf "concat(itoa(%s, malloc(32), 10), %s)" e1' e2'
     (VStr _, VStr _) -> return $ printf "concat(%s, %s)" e1' e2'
-compileExpr (LMinus e1 e2) = do
-  e1' <- compileExpr e1
-  e2' <- compileExpr e2
-  return $ printf "(%s - %s)" e1' e2'
-compileExpr (LMul e1 e2) = do
-  e1' <- compileExpr e1
-  e2' <- compileExpr e2
-  return $ printf "(%s * %s)" e1' e2'
-compileExpr (LDiv e1 e2) = do
-  e1' <- compileExpr e1
-  e2' <- compileExpr e2
-  return $ printf "(%s / %s)" e1' e2'
+compileExpr _ = throwError "Unsupported expression"
 
 escapeString :: String -> String
 escapeString s = concatMap escapeChar s
@@ -127,9 +119,7 @@ exprType (LAdd e1 e2) = case (exprType e1, exprType e2) of
   (VInt _, VInt _) -> VInt 0
   (VStr _, _) -> VStr ""
   (_, VStr _) -> VStr ""
-exprType (LMinus _ _) = VInt 0
-exprType (LMul _ _) = VInt 0
-exprType (LDiv _ _) = VInt 0
+exprType _ = VInt 0
 
 concatMapM :: (a -> CCompiler String) -> [a] -> CCompiler String
 concatMapM f xs = concat <$> mapM f xs

@@ -101,7 +101,7 @@ cCompiler file = do
         Left err -> putStrLn $ "Erro semântico: " ++ err
         Right code -> do
           let cFile = replaceExtension file "c"
-          let exeFile = dropExtension file
+          let exeFile = dropExtension file ++ ".out"
           writeFile cFile code
           putStrLn $ "Generated C code written to: " ++ cFile
           callProcess "gcc" [cFile, "-o", exeFile]
