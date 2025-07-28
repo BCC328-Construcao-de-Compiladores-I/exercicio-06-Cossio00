@@ -58,13 +58,14 @@ compile (L2 stmts) = do
 
 compileStmt :: S2 -> CCompiler String
 compileStmt (LAssign v e) = do
-  env <- get
   expr <- compileExpr e
+  varType <- exprType e
+  env <- get
   case Map.lookup v env of
     Just _ -> return $ printf "  %s = %s;\n" (varName v) expr
     Nothing -> do
-      put $ Map.insert v (VInt 0) env
-      return $ printf "  int %s = %s;\n" (varName v) expr
+      put $ Map.insert v varType env
+      return $ printf "  %s %s = %s;\n" (typeToC varType) (varName v) expr
 compileStmt (LRead s v) = do
   env <- get
   case Map.lookup v env of
@@ -74,16 +75,18 @@ compileStmt (LRead s v) = do
   return $ printf "  printf(\"%s\"); scanf(\"%%d\", &%s);\n" prompt (varName v)
 compileStmt (LPrint e) = do
   expr <- compileExpr e
-  return $ case exprType e of
+  varType <- exprType e
+  return $ case varType of
     VInt _ -> printf "  printf(\"%%d\\n\", %s);\n" expr
     VStr _ -> printf "  printf(\"%%s\\n\", %s);\n" expr
 compileStmt (Def v e stmts) = do
   env <- get
-  put $ Map.insert v (VInt 0) env
+  varType <- exprType e
+  put $ Map.insert v varType env
   expr <- compileExpr e
   body <- concatMapM compileStmt stmts
   put env
-  return $ printf "  {\n    int %s = %s;\n%s  }\n" (varName v) expr body
+  return $ printf "  {\n    %s %s = %s;\n%s  }\n" (typeToC varType) (varName v) expr body
 
 compileExpr :: E2 -> CCompiler String
 compileExpr (LVal (VInt n)) = return $ show n
@@ -94,8 +97,8 @@ compileExpr (LVar v) = do
     Just _ -> return $ varName v
     Nothing -> throwError $ "Undefined variable: " ++ varName v
 compileExpr (LAdd e1 e2) = do
-  let t1 = exprType e1
-  let t2 = exprType e2
+  t1 <- exprType e1
+  t2 <- exprType e2
   e1' <- compileExpr e1
   e2' <- compileExpr e2
   case (t1, t2) of
@@ -105,6 +108,10 @@ compileExpr (LAdd e1 e2) = do
     (VStr _, VStr _) -> return $ printf "concat(%s, %s)" e1' e2'
 compileExpr _ = throwError "Unsupported expression"
 
+typeToC :: Value -> String
+typeToC (VInt _) = "int"
+typeToC (VStr _) = "const char*"
+
 escapeString :: String -> String
 escapeString s = concatMap escapeChar s
   where
@@ -113,14 +120,21 @@ escapeString s = concatMap escapeChar s
     escapeChar '\\' = "\\\\"
     escapeChar c = [c]
 
-exprType :: E2 -> Value
-exprType (LVal v) = v
-exprType (LVar _) = VInt 0
-exprType (LAdd e1 e2) = case (exprType e1, exprType e2) of
-  (VInt _, VInt _) -> VInt 0
-  (VStr _, _) -> VStr ""
-  (_, VStr _) -> VStr ""
-exprType _ = VInt 0
+exprType :: E2 -> CCompiler Value
+exprType (LVal v) = return v
+exprType (LVar v) = do
+  env <- get
+  case Map.lookup v env of
+    Just val -> return val
+    Nothing -> throwError $ "Undefined variable: " ++ varName v
+exprType (LAdd e1 e2) = do
+  t1 <- exprType e1
+  t2 <- exprType e2
+  return $ case (t1, t2) of
+    (VInt _, VInt _) -> VInt 0
+    (VStr _, _) -> VStr ""
+    (_, VStr _) -> VStr ""
+exprType _ = return $ VInt 0
 
 concatMapM :: (a -> CCompiler String) -> [a] -> CCompiler String
 concatMapM f xs = concat <$> mapM f xs
